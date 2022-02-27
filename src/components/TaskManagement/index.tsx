@@ -32,6 +32,7 @@ function TaskManagement() {
   const classes = useStyle();
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [taskText, setTaskText] = useState<string>('');
+  // const [taskChecked, setTaskChecked] = useState<boolean>(false);
  
   // 表示
   const dispData = () => {
@@ -40,16 +41,13 @@ function TaskManagement() {
       const  userList: Task[] = [];
       let count: number = 0;
       querySnapshot.docs.map((doc, index) => {
-        // この判定は不要かも
-        if (count === index ) {
-          const task: Task = {
-            docId: doc.id,
-            taskText: doc.data().taskText,
-            timestamp: doc.data({serverTimestamps:"estimate"}).timestamp,
-          };
-          userList.push(task);
-          count += 1;
+        const task: Task = {
+          docId: doc.id,
+          taskText: doc.data().taskText,
+          timestamp: doc.data({serverTimestamps:"estimate"}).timestamp,
         };
+        userList.push(task);
+        count += 1;
       });
       setTaskList(userList);
     });
@@ -57,6 +55,9 @@ function TaskManagement() {
 
   // 登録
   const addTask = (inputText: string) => {
+    if (inputText == '') {
+      return;
+    };
     const usersCollectionRef = collection(db, 'users');
     const nowTime = new Date();
     const nowYear = nowTime.getFullYear();
@@ -78,6 +79,22 @@ function TaskManagement() {
     const userDocumentRef = doc(db, 'users', docId);
     await deleteDoc(userDocumentRef);
     dispData();
+  };
+
+  // タスクチェックボックスのオンオフ切り替え時
+  const changeTaskChecked = (blnChecked: boolean, numIndex: number) => {
+    // オフ→オンのときテキストの文字色を変える
+    if (blnChecked === true) {
+      const taskText = document.getElementById(`taskText${numIndex}`);
+      if (taskText !== null) {
+        taskText.style.color = '#FF0000';
+      };
+    } else {
+      const taskText = document.getElementById(`taskText${numIndex}`);
+      if (taskText !== null) {
+        taskText.style.color = '#000000';
+      };
+    };
   };
 
   // 初期処理
@@ -103,10 +120,12 @@ function TaskManagement() {
             {taskList.map((user, index) => (
               <TableRow key={index.toString()}>
                 <TableCell>
-                  <Checkbox />
+                  <Checkbox
+                    onChange={(e) => changeTaskChecked(e.target.checked, index)}  
+                  />
                 </TableCell>
                 <TableCell>
-                  <Typography>
+                  <Typography id={`taskText${index.toString()}`}>
                     {user.taskText}
                   </Typography>
                   <Typography className={classes.taskTime}>
