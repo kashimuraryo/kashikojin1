@@ -1,6 +1,7 @@
 import { useState, useEffect }  from 'react';
 import { db } from '../../firebase';
-import { doc, getDocs, addDoc, collection, onSnapshot, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
+import CommonDialog from '../CommonDialog';
+import { doc, getDocs, addDoc, collection, deleteDoc } from 'firebase/firestore';
 import { Button, TextField, Checkbox } from '@mui/material'
 import {
   Typography,
@@ -25,7 +26,7 @@ const useStyle = makeStyles((theme) => ({
 type Task = {
   docId: string;
   taskText: string;
-  timestamp: string;
+  timeStamp: string;
 };
 
 function TaskManagement() {
@@ -33,18 +34,19 @@ function TaskManagement() {
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [taskText, setTaskText] = useState<string>('');
   // const [taskChecked, setTaskChecked] = useState<boolean>(false);
+  const [isOpenDeleteConfirm, setIsOpenDeleteConfirm] = useState(false);
  
   // 表示
   const dispData = () => {
-    const usersCollectionRef = collection(db, 'users');
-    getDocs(usersCollectionRef).then((querySnapshot) => {
+    const tasksCollectionRef = collection(db, 'tTasks');
+    getDocs(tasksCollectionRef).then((querySnapshot) => {
       const  userList: Task[] = [];
       let count: number = 0;
       querySnapshot.docs.map((doc, index) => {
         const task: Task = {
           docId: doc.id,
           taskText: doc.data().taskText,
-          timestamp: doc.data({serverTimestamps:"estimate"}).timestamp,
+          timeStamp: doc.data({serverTimestamps:"estimate"}).timeStamp,
         };
         userList.push(task);
         count += 1;
@@ -55,10 +57,10 @@ function TaskManagement() {
 
   // 登録
   const addTask = (inputText: string) => {
-    if (inputText == '') {
+    if (inputText === '') {
       return;
     };
-    const usersCollectionRef = collection(db, 'users');
+    const tasksCollectionRef = collection(db, 'tTasks');
     const nowTime = new Date();
     const nowYear = nowTime.getFullYear();
     const nowMonth = nowTime.getMonth();
@@ -66,17 +68,23 @@ function TaskManagement() {
     const nowHour = nowTime.getHours();
     const nowMin = nowTime.getMinutes();
     const nowSec = nowTime.getSeconds();
-    const documentRef = addDoc(usersCollectionRef, {
+    const documentRef = addDoc(tasksCollectionRef, {
       taskText: inputText,
-      timestamp: `${nowYear}/${nowMonth}/${nowDay} ${nowHour}:${nowMin}:${nowSec}`,
+      timeStamp: `${nowYear}/${nowMonth}/${nowDay} ${nowHour}:${nowMin}:${nowSec}`,
     });
     setTaskText('');
     dispData();
   };
 
+  // 削除(確認)
+  const deleteTaskConfirm = () => {
+    setIsOpenDeleteConfirm(true);
+  };
+
   // 削除
   const deleteTask = async(docId: string) => {
-    const userDocumentRef = doc(db, 'users', docId);
+    setIsOpenDeleteConfirm(false);
+    const userDocumentRef = doc(db, 'tTasks', docId);
     await deleteDoc(userDocumentRef);
     dispData();
   };
@@ -118,6 +126,7 @@ function TaskManagement() {
           </TableHead>
           <TableBody>
             {taskList.map((user, index) => (
+              <>
               <TableRow key={index.toString()}>
                 <TableCell>
                   <Checkbox
@@ -129,14 +138,14 @@ function TaskManagement() {
                     {user.taskText}
                   </Typography>
                   <Typography className={classes.taskTime}>
-                    {user.timestamp.toString()}
+                    {user.timeStamp.toString()}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Button
                     variant="outlined"
                     color="error"
-                    onClick={() => deleteTask(user.docId)}
+                    onClick={deleteTaskConfirm}
                   >
                     <FontAwesomeIcon
                       icon={faTrashAlt}
@@ -145,6 +154,13 @@ function TaskManagement() {
                   </Button>
                 </TableCell>
               </TableRow>
+              <CommonDialog
+                msg="このタスクを削除しますか？"
+                isOpen={isOpenDeleteConfirm}
+                doYes={() => {deleteTask(user.docId)}}
+                doNo={() => {setIsOpenDeleteConfirm(false)}}
+              />
+              </>
             ))}
             <TableRow>
               <TableCell>
